@@ -32,7 +32,7 @@ from nepi_edge_sdk_base import nepi_save
 from nepi_edge_sdk_base import nepi_msg
 from nepi_edge_sdk_base import nepi_img 
 
-rom nepi_ros_interfaces.msg import FilePublisherStatus
+rom nepi_ros_interfaces.msg import FilePubImgStatus
 
 from std_msgs.msg import UInt8, Int32, Float32, Empty, String, Bool, Header
 
@@ -47,14 +47,12 @@ from nepi_edge_sdk_base.save_cfg_if import SaveCfgIF
 # Node Class
 #########################################
 
-class NepiFilePublisherApp(object):
+class NepiFilePubImgApp(object):
 
   HOME_FOLDER = "/mnt/nepi_storage"
   PUBLISH_TOPIC_PREFIX = "file_"
 
   IMG_FILE_TYPES = ['png','PNG','jpg','jpeg','JPG']
-  VID_FILE_TYPES = ['avi','AVI']
-
 
   #Set Initial Values
   MIN_IMG_DELAY = 0.05
@@ -71,19 +69,16 @@ class NepiFilePublisherApp(object):
   paused = False
   last_folder = ""
   current_folders = []
+  current_image = 'None'
 
   img_running = False
   img_count = 0
   img_pub = None
 
 
-  vid_running = False
-  vid_count = 0
-  vid_pub = None
-
   #######################
   ### Node Initialization
-  DEFAULT_NODE_NAME = "file_publisher_app" # Can be overwitten by luanch command
+  DEFAULT_NODE_NAME = "file_pub_img" # Can be overwitten by luanch command
   def __init__(self):
     #### APP NODE INIT SETUP ####
     nepi_ros.init_node(name= self.DEFAULT_NODE_NAME)
@@ -101,7 +96,7 @@ class NepiFilePublisherApp(object):
                                  paramsModifiedCallback=self.updateFromParamServer)
 
     # Create class publishers
-    self.status_pub = rospy.Publisher("~status", FilePublisherStatus, queue_size=1, latch=True)
+    self.status_pub = rospy.Publisher("~status", FilePubImgStatus, queue_size=1, latch=True)
 
     # Start updater process
     rospy.Timer(rospy.Duration(self.UPDATER_DELAY_SEC), self.updaterCb())
@@ -118,13 +113,6 @@ class NepiFilePublisherApp(object):
     rospy.Subscriber('~set_img_pub_delay', Float32, self.setImgPubDelayCb) 
     rospy.Subscriber('~start_img_pub', Empty, self.startImgPubCb)
     rospy.Subscriber('~stop_img_pub', Empty, self.stopImgPubCb)
-
-    # Video Pub Scubscirbers and publishers
-    rospy.Subscriber('~vid_pub_size', String, self.vidPubSizeCb)
-    rospy.Subscriber('~vid_pub_encoding', String, self.vidPubEncodingCb)
-    rospy.Subscriber('~start_vid_pub', Empty, self.startVidPubCb)
-    rospy.Subscriber('~stop_vid_pub', Empty, self.stopVidPubCb)
-    rospy.Subscriber('~set_vid_pub_random', Bool, self.setVidPubRandomCb)
 
     time.sleep(1)
 
@@ -154,11 +142,6 @@ class NepiFilePublisherApp(object):
         for f_type in IMG_FILE_TYPES:
           num_files = num_files + nepi_ros.get_file_count(current_folder,f_type)
         self.img_count =  num_files
-
-        num_files = 0
-        for f_type in VID_FILE_TYPES:
-          num_files = num_files + nepi_ros.get_file_count(current_folder,f_type)
-        self.vid_count =  num_files
 
 
     self.last_folder = current_folder
@@ -256,7 +239,7 @@ class NepiFilePublisherApp(object):
           self.current_img_ind = int(random.random() * self.img_num_files)
         if self.current_img_ind > (self.num_files-1):
           self.current_img_ind = 0 # Start over
-        file2open = self.file_list[self.current_img_ind]
+         = self.file_list[self.current_img_ind]
         self.current_img_ind = self.current_img_ind + 1
         #print("Opening File: " + file2open)
         cv_image = cv2.imread(file2open)
@@ -273,6 +256,7 @@ class NepiFilePublisherApp(object):
         #Convert image from cv2 to ros
         img_out_msg = nepi_img.cv2img_to_rosimg(cv_image,encoding=img_encoding)
         # Publish new image to ros
+        self.current_image = file2open.split('/')[-1]
         if not rospy.is_shutdown():
           img_out_msg.header.stamp = rospy.Time.now()
           self.img_pub.publish(img_out_msg) 
@@ -284,135 +268,16 @@ class NepiFilePublisherApp(object):
       rospy.Timer(rospy.Duration(1), self.imgPubCb, oneshot = True)
 
 
-  #############################
-  ## Video callbacks
-
-  def vidPubSizeCb(self,msg):
-    new_size = msg.data
-    if new_size in self.STANDARD_IMAGE_SIZES:
-      rospy.get_param('~vid_size',new_size)
-    self.publish_status()
-
-  def vidPubEncodingCb(self,msg):
-    new_encoding = msg.data
-    if new_encoding in self.IMG_PUB_ENCODING_OPTIONS:
-      rospy.get_param('~vid_encoding',new_encoding)
-    self.publish_status()
-
-  def vidPubRandomCb(self,msg):
-    ##nepi_msg.publishMsgInfo(self,msg)
-    rospy.set_param('~vid_random',msg.data)
-    self.publish_status()
-
-
-  def startVidPubCb(self):
-    if self.vid_running == False:
-      current_folder = rospy.get_param('~current_folder', self.init_current_folder)
-      if self.vid_pub != None
-        self.vid_pub.unregister()
-        sleep(1)
-      self.image_pub = rospy.Publisher("~images", Image, queue_size=1, latch=True)
-      # Now start publishing images
-      self.vid_file_list = []
-      self.vid_num_files = 0
-      if os.path.exists(current_folder):
-        for f_type in self.VID_FILE_TYPES:
-          [file_list, num_files] = nepi_ros.get_file_list(current_folder,f_type)
-          self.vid_file_list.extend(file_list)
-          self.vid_num_files += num_files
-        if self.vid_num_files > 0:
-          self.current_vid_ind = 0
-          rospy.Timer(rospy.Duration(1), self.vidPubCb, oneshot = True)
-          self.vid_running = True
-          rospy.set_param('~vid_running',True)
-        else:
-          print("No image files found in folder " + current_folder + " not found")
-      else:
-        print("Folder " + current_folder + " not found")
-
-  def stopVidPubCb(self):
-    self.vid_running = False
-    rospy.set_param('~vid_running',False)
-    sleep(1)
-    if self.vid_pub != None
-      self.vid_pub.unregister()
-      sleep(1)
-
-
-  ### Add your CV2 image customization code here
-  def vidPubCb(self,timer):
-    vid_size = rospy.get_param('~vid_size',self.init_vid_size)
-    vid_encoding = rospy.get_param('~vid_encoding',self.init_vid_encoding)
-    vid_random = rospy.get_param('~vid_random',self.init_vid_random)
-    vid_overlay = rospy.get_param('~vid_overlay',  self.init_vid_overlay)
-    if self.vid_running == True and self.paused == False:
-      if self.vid_pub != None:
-        if vid_random == True:
-          self.current_vid_ind = int(random.random() * self.vid_num_files)
-        if self.current_vid_ind > (self.num_files-1):
-          self.current_vid_ind = 0 # Start over
-        file2open = self.file_list[self.current_vid_ind]
-        self.current_vid_ind = self.current_vid_ind + 1
-        #print("Opening File: " + file2open)
-
-
-        if os.path.isfile(self.file2open):
-          print("Opening File: " + self.file2open)
-          self.vidcap = cv2.VideoCapture(self.file2open)
-          if self.vidcap.isOpened() == True:
-            success,image = self.vidcap.read()
-            shape_str = str(image.shape)
-            print('Image size: ' + shape_str)
-            fps = self.vidcap.get(5)
-            print('Frames per second : ', fps,'FPS')
-
-            frame_count = self.vidcap.get(7)
-            print('Frame count : ', frame_count)
-
-            while success == True and self.vid_running == True and not rospy.is_shutdown():
-              if self.paused == True:
-                time.sleep(1)
-              else:
-                # Publish video at native fps
-                success,cv_image = self.vidcap.read()
-                if success == False:
-                  self.vidcap.release()
-                  time.sleep(1)
-                  self.vidcap = cv2.VideoCapture(self.file2open)
-                else: 
-                  try:
-                    vid_size_list = vid_size.split(":")
-                    vid_h = int(vid_size_list[0])
-                    vid_w = int(vid_size_list[1])
-                  except:
-                    vid_h = 600
-                    vid_w = 800
-                  cv_image = cv2.resize(cv_image,(vid_h,vid_w))
-                  #Convert image from cv2 to ros
-                  img_out_msg = nepi_img.cv2img_to_rosimg(cv_image,encoding=vid_encoding)
-                  # Publish new image to ros
-                  if not rospy.is_shutdown():
-                    img_out_msg.header.stamp = rospy.Time.now()
-                    self.vid_pub.publish(img_out_msg) 
-
-          else:
-            print("Unable to grap image from video file")
-            return
-        else:
-          print("File not found in specified folder")
-          return
-    if self.vid_running == True:
-      rospy.Timer(rospy.Duration(1), self.vidPubCb, oneshot = True)
-
 
   ###################
   ## Status Publisher
   def publish_status(self):
-    status_msg = FilePublisherStatus()
+    status_msg = FilePubImgStatus()
 
     status_msg.home_folder = self.HOME_FOLDER
     status_msg.current_folder = rospy.get_param('~current_folder', self.init_current_folder)
     status_msg.current_folders = self.current_folders
+    status_msg.current_image = self.current_image 
 
     status_msg.paused = self.paused
 
@@ -428,17 +293,6 @@ class NepiFilePublisherApp(object):
     status_msg.min_max_img_delay = [self.MIN_IMG_DELAY. self.MAX_IMG_DELAY]
     status_msg.img_delay = rospy.get_param('~img_delay',  self.init_img_delay)
     status_msg.img_pub_running = rospy.get_param('~img_running',self.init_img_running)
-
-
-    status_msg.vid_size_options_list = self.STANDARD_IMAGE_SIZES
-    status_msg.vid_pub_size = rospy.get_param('~vid_size',self.init_vid_size)
-    status_msg.vid_encoding_options_list = self.IMG_PUB_ENCODING_OPTIONS
-    status_msg.vid_pub_encoding = rospy.get_param('~vid_encoding',self.init_vid_encoding)
-
-    status_msg.vid_count = self.vid_count
-    status_msg.vid_random = rospy.get_param('~vid_random',self.init_vid_random)
-    status_msg.vid_overlay = rospy.get_param('~vid_overlay',self.init_vid_overlay)
-    status_msg.vid_pub_running =  rospy.get_param('~vid_running', self.init_vid_running)
 
     self.status_pub.publish(status_msg)
 
@@ -466,13 +320,6 @@ class NepiFilePublisherApp(object):
     rospy.set_param('~img_delay', self.FACTORY_IMG_PUB_DELAY)
     rospy.set_param('~img_running', False)
 
-    rospy.get_param('~vid_size',self.FACTORY_IMG_SIZE)
-    rospy.get_param('~vid_encoding',self.FACTORY_IMG_ENCODING_OPTION)
-
-    rospy.set_param('~vid_random',False)
-    rospy.set_param('~vid_overlay',False)
-    rospy.set_param('~vid_running', False)
-
     self.publish_status()
 
   def saveConfigCb(self, msg):  # Just update Class init values. Saving done by Config IF system
@@ -498,13 +345,6 @@ class NepiFilePublisherApp(object):
     self.init_img_delay = rospy.get_param('~img_delay', self.FACTORY_IMG_PUB_DELAY)
     self.init_img_running = rospy.get_param('~img_running', False)
 
-    self.init_vid_size = rospy.get_param('~vid_size',self.FACTORY_IMG_SIZE)
-    self.init_vid_encoding = rospy.get_param('~vid_encoding',self.FACTORY_IMG_ENCODING_OPTION)
-
-    self.init_vid_random = rospy.get_param('~vid_random',False)
-    self.init_vid_overlay = rospy.get_param('~vid_overlay',False)
-    self.init_vid_running = rospy.get_param('~vid_running', False)
-
     self.resetParamServer(do_updates)
 
   def resetParamServer(self,do_updates = True):
@@ -517,14 +357,6 @@ class NepiFilePublisherApp(object):
     rospy.set_param('~img_overlay',  self.init_img_overlay)
     rospy.set_param('~img_delay',  self.init_img_delay)
     rospy.set_param('~img_running',self.init_img_running)
-
-
-    rospy.set_param('~vid_size',self.init_vid_size)
-    rospy.set_param('~vid_encoding',self.init_vid_encoding)
-
-    rospy.set_param('~vid_random',self.init_vid_random)
-    rospy.set_param('~vid_overlay',self.init_vid_overlay)
-    rospy.set_param('~vid_running', self.init_vid_running)
 
     if do_updates:
       self.updateFromParamServer()
@@ -544,7 +376,7 @@ class NepiFilePublisherApp(object):
 # Main
 #########################################
 if __name__ == '__main__':
-  NepiFilePublisherApp()
+  NepiFilePubImgApp()
 
 
 
