@@ -8,12 +8,12 @@
 # License: 3-clause BSD, see https://opensource.org/licenses/BSD-3-Clause
 #
 
-APP_NAME = 'FILE_PUB_IMG' # Use in display menus
+APP_NAME = 'Img_File_Publisher' # Use in display menus
 FILE_TYPE = 'APP'
 APP_DICT = dict(
     description = 'Application for publishing images from image files',
     pkg_name = 'nepi_app_file_pub_img',
-    group_name = 'FILE_PUB',
+    group_name = 'DATA',
     config_file = 'app_file_pub_img.yaml',
     app_file = 'file_pub_img_app_node.py',
     node_name = 'app_file_pub_img'
