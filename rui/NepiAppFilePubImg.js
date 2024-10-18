@@ -289,7 +289,7 @@ class FilePubImgApp extends Component {
 
 
  render() {
-    const {sendStringMsg} = this.props.ros
+    const {sendTriggerMsg, sendStringMsg} = this.props.ros
     const appNamespace = this.state.appNamespace
     const folderOptions = this.createFolderOptions()
     const pubRunning = this.state.pub_running
