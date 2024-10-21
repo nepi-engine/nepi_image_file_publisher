@@ -23,8 +23,7 @@ import BooleanIndicator from "./BooleanIndicator"
 
 import CameraViewer from "./CameraViewer"
 
-import {createShortUniqueValues, onDropdownSelectedSendStr, createMenuListFromStrList} from "./Utilities"
-import {createShortValuesFromNamespaces} from "./Utilities"
+import {createShortUniqueValues, onDropdownSelectedSendStr, createMenuListFromStrList, createShortValuesFromNamespaces, onUpdateSetStateValue, onEnterSendFloatValue} from "./Utilities"
 
 function round(value, decimals = 0) {
   return Number(value).toFixed(decimals)
@@ -182,11 +181,13 @@ class FilePubImgApp extends Component {
 
 
   renderPubControls() {
-    const {sendTriggerMsg, sendStringMsg} = this.props.ros
+    const {sendTriggerMsg, sendStringMsg, sendBoolMsg} = this.props.ros
     const appNamespace = this.state.appNamespace
     const pubRunning = this.state.pub_running
     const appImageTopic = pubRunning === true ? this.state.appNamespace + "/images" : null
     const viewableFolders = (this.state.viewableFolders || pubRunning === false)
+    const NoneOption = <Option>None</Option>
+
     return (
 
 
@@ -214,19 +215,86 @@ class FilePubImgApp extends Component {
             </ButtonMenu>
             </div>
 
-
-            <Label title={"Current Folder"}>
-            <Input disabled value={this.state.current_folder} />
-            </Label>
-
             <Label title={"Image Count"}>
             <Input disabled value={this.state.file_count} />
             </Label>
 
-            <Label title={"Current File"}>
-            <Input disabled value={this.state.current_file} />
+            <Label title={"Current Folder"} >
+          </Label>
+          <pre style={{ height: "25px", overflowY: "auto" }}>
+            {this.state.current_folder}
+          </pre>
+
+
+          <Label title={"Current Folder"} >
+          </Label>
+          <pre style={{ height: "25px", overflowY: "auto" }}>
+            {this.state.current_file}
+          </pre>
+
+            <Label title={"Set Image Size"}>
+            <Select
+              id="select_targset_sizeet"
+              onChange={(event) => onDropdownSelectedSendStr.bind(this)(event, appNamespace + "/set_size")}
+              value={this.state.set_size}
+            >
+              {this.state.size_options_list
+                ? createMenuListFromStrList(this.state.size_options_list, false, [],[],[])
+                : NoneOption}
+            </Select>
             </Label>
 
+
+            <Label title={"Set Image Encoding"}>
+            <Select
+              id="set_encoding"
+              onChange={(event) => onDropdownSelectedSendStr.bind(this)(event, appNamespace + "/set_encoding")}
+              value={this.state.set_encoding}
+            >
+              {this.state.encoding_options_list
+                ? createMenuListFromStrList(this.state.encoding_options_list, false, [],[],[])
+                : NoneOption}
+            </Select>
+            </Label>
+
+            <Label title="Set Random Order">
+              <Toggle
+              checked={this.state.set_random===true}
+              onClick={() => sendBoolMsg(appNamespace + "/set_random",!this.state.set_random)}>
+              </Toggle>
+        </Label>
+
+        <Label title="Set Overlay">
+              <Toggle
+              checked={this.state.set_overlay===true}
+              onClick={() => sendBoolMsg(appNamespace + "/set_overlay",!this.state.set_overlay)}>
+              </Toggle>
+        </Label>
+
+        <Label title={"Set Delay (Seconds)"}>
+          <Input id="set_delay" 
+            value={this.state.set_delay} 
+            onChange={(event) => onUpdateSetStateValue.bind(this)(event,"set_delay")} 
+            onKeyDown= {(event) => onEnterSendFloatValue.bind(this)(event,appNamespace + "/set_delay")} />
+        </Label>
+
+        <Label title="Pause">
+              <Toggle
+              checked={this.state.paused===true}
+              onClick={() => sendBoolMsg(appNamespace + "/pause_pub",!this.state.paused)}>
+              </Toggle>
+        </Label>
+
+        <div hidden={this.state.paused === false}>
+            <ButtonMenu>
+              <Button onClick={() => this.props.ros.sendTriggerMsg(appNamespace + "/step_backward")}>{"Back"}</Button>
+            </ButtonMenu>
+
+            <ButtonMenu>
+              <Button onClick={() => this.props.ros.sendTriggerMsg(appNamespace + "/step_forward")}>{"Forward"}</Button>
+            </ButtonMenu>
+
+            </div>
         </div>
 
         </Column>
