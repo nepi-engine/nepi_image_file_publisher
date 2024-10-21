@@ -444,7 +444,7 @@ class NepiFilePubImgApp(object):
           fontColor = (0, 255, 0)
           lineType = 1
           text2overlay=self.current_file
-          bottomLeftCornerOfText = (10,10)
+          bottomLeftCornerOfText = (int(self.width*.05),int(self.height*.1))
           cv2.putText(cv2_img,text2overlay, 
               bottomLeftCornerOfText, 
               font, 
