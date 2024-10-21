@@ -127,13 +127,13 @@ class NepiFilePubImgApp(object):
     rospy.Subscriber('~step_backward', Empty, self.stepBackwardPubCb)
 
     time.sleep(1)
-
+    ##############################
     ## Initiation Complete
     nepi_msg.publishMsgInfo(self," Initialization Complete")
     self.publish_status()
     # Spin forever (until object is detected)
     rospy.spin()
-
+    ##############################
 
 #######################
   ### App Config Functions
