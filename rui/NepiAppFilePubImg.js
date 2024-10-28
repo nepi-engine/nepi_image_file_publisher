@@ -71,10 +71,7 @@ class FilePubImgApp extends Component {
 
       statusListener: null,
       connected: false,
-      needs_update: true,
-
-      pub_transforms: false,
-      create_transforms:false
+      needs_update: true
 
     }
 
@@ -121,9 +118,6 @@ class FilePubImgApp extends Component {
       min_max_delay: message.min_max_delay ,
       set_delay: message.set_delay ,
       pub_running: message.running
-
-      pub_transforms: message.pub_transforms
-      create_transforms: message.create_transforms
 
   })
 
@@ -405,19 +399,6 @@ class FilePubImgApp extends Component {
             )}
             </div>
     
-            <Label title={"Publish Transforms"}>
-                  <Toggle
-                  checked={this.state.controlsEnable}
-                  onClick={() => setIdxControlsEnable(this.props.idxSensorNamespace,!this.state.controlsEnable)}
-                  />
-                </Label>
-
-            <Label title={"Create Transforms"}>
-              <Toggle
-              checked={this.state.controlsEnable}
-              onClick={() => setIdxControlsEnable(this.props.idxSensorNamespace,!this.state.controlsEnable)}
-              />
-            </Label>
         </Column>
         <Column>
 
